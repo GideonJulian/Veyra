@@ -144,6 +144,13 @@ const styles = StyleSheet.create({
     height: 140,
     justifyContent: "center",
     alignItems: "center",
+    // iOS White Glow Shadow
+    shadowColor: "#FFFFFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    // Android Shadow Elevation
+    elevation: 12,
   },
   logoImage: {
     width: "100%",

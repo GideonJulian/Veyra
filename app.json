@@ -29,13 +29,14 @@
           "image": "./assets/icons/splash.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#1C1C1E",
+          "backgroundColor": "#000000",
           "dark": {
             "image": "./assets/icons/splash.png",
-            "backgroundColor": "#1C1C1E"
+            "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
