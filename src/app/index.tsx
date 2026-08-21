@@ -15,7 +15,7 @@ export default function Splash() {
 
   useEffect(() => {
     startAnimations();
-    clearstorage();
+    // clearstorage();
     init();
   }, []);
 
