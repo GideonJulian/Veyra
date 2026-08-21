@@ -4,7 +4,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 
 export default function Splash() {
-  const logoScale = useRef(new Animated.Value(0.8)).current;
+  // Scale starts small for pop-out effect
+ 
+  // Opacity starts invisible for fade-in effect
+  const logoOpacity = useRef(new Animated.Value(0)).current;
   const logoFloat = useRef(new Animated.Value(0)).current;
 
   const footerOpacity = useRef(new Animated.Value(0)).current;
@@ -18,10 +21,12 @@ export default function Splash() {
 
   const startAnimations = () => {
     Animated.parallel([
-      Animated.timing(logoScale, {
+      // Pop-out animation (overshoots slightly then settles)
+  
+      // Fade-in animation
+      Animated.timing(logoOpacity, {
         toValue: 1,
-        duration: 700,
-        easing: Easing.out(Easing.exp),
+        duration: 600,
         useNativeDriver: true,
       }),
 
@@ -42,6 +47,7 @@ export default function Splash() {
       }),
     ]).start();
 
+    // Floating loop starts after the initial pop-in finishes
     Animated.loop(
       Animated.sequence([
         Animated.timing(logoFloat, {
@@ -101,7 +107,8 @@ export default function Splash() {
           style={[
             styles.logoWrapper,
             {
-              transform: [{ scale: logoScale }, { translateY: logoFloat }],
+              opacity: logoOpacity,
+              
             },
           ]}
         >

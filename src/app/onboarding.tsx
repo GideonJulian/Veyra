@@ -15,16 +15,24 @@ import { ArrowRight } from 'lucide-react-native';
 const { height } = Dimensions.get('window');
 
 export default function OnboardingScreen() {
-  const handleGetStarted = async () => {
-    try {
-      await AsyncStorage.setItem('hasSeenOnboarding', 'true');
-      router.replace('/(tabs)/discover');
-    } catch (error) {
-      console.error('Error saving onboarding state:', error);
-      router.replace('/(tabs)/discover');
-    }
-  };
+ const handleGetStarted = async () => {
+  try {
+    const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
 
+    if (!hasSeenOnboarding) {
+      // First time seeing onboarding: mark as seen and route to Sign Up
+      await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+      router.replace('/sign-up');
+    } else {
+      // Returning user: route to Login
+      router.replace('/login');
+    }
+  } catch (error) {
+    console.error('Error handling onboarding navigation state:', error);
+    // Fallback route in case storage fails
+    router.replace('/sign-up');
+  }
+};
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topSection}>

@@ -1,10 +1,11 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Compass, Search, Heart, ShoppingBag, User } from 'lucide-react-native';
+import { Compass, Search, Heart, ShoppingBag, User, Home } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
-    <Tabs
+    <Tabs 
+   
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: '#111827',
@@ -12,9 +13,10 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopColor: '#E5E7EB',
-          height: 60,
+          height: 75,
           paddingBottom: 8,
-          paddingTop: 8,
+          paddingTop: 12,
+        
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -26,7 +28,7 @@ export default function TabLayout() {
         name="discover"
         options={{
           title: 'Discover',
-          tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
         }}
       />
       <Tabs.Screen
