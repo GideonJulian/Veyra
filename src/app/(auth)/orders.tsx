@@ -8,11 +8,15 @@ import {
   StatusBar,
   Image,
   ListRenderItemInfo,
-  Alert,
+  Modal,
+  TextInput,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ArrowLeft, Bell, Star, Package } from 'lucide-react-native';
+import { ArrowLeft, Bell, Star, Package, X } from 'lucide-react-native';
 
 type TabType = 'Ongoing' | 'Completed';
 
@@ -27,7 +31,7 @@ interface OrderItem {
   tab: TabType;
 }
 
-const MOCK_ORDERS: OrderItem[] = [
+const INITIAL_ORDERS: OrderItem[] = [
   {
     id: '1',
     title: 'Regular Fit Slogan',
@@ -78,25 +82,50 @@ const MOCK_ORDERS: OrderItem[] = [
 
 export default function OrdersScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('Ongoing');
+  const [orders, setOrders] = useState<OrderItem[]>(INITIAL_ORDERS);
 
-  const filteredOrders = MOCK_ORDERS.filter(
-    (order) => order.tab === activeTab
-  );
+  // Review Modal State
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [reviewText, setReviewText] = useState('');
+
+  const filteredOrders = orders.filter((order) => order.tab === activeTab);
+
+  const openReviewModal = (item: OrderItem) => {
+    setSelectedOrder(item);
+    setSelectedRating(0);
+    setReviewText('');
+    setIsModalVisible(true);
+  };
+
+  const closeReviewModal = () => {
+    setIsModalVisible(false);
+    setSelectedOrder(null);
+  };
+
+  const handleSubmitReview = () => {
+    if (selectedOrder && selectedRating > 0) {
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order.id === selectedOrder.id
+            ? { ...order, rating: `${selectedRating}/5` }
+            : order
+        )
+      );
+    }
+    closeReviewModal();
+  };
 
   const renderActionButton = (item: OrderItem) => {
-    // 1. Ongoing status -> "Track order" button
     if (activeTab === 'Ongoing' || item.status === 'Ongoing') {
       return (
-        <TouchableOpacity
-          style={styles.actionBtn}
-          onPress={() => Alert.alert('Track Order', `Tracking order for ${item.title}`)}
-        >
+        <TouchableOpacity style={styles.actionBtn}>
           <Text style={styles.actionBtnText}>Track order</Text>
         </TouchableOpacity>
       );
     }
 
-    // 2. Completed with existing rating -> Rating badge
     if (item.rating) {
       return (
         <View style={styles.ratingBadge}>
@@ -106,11 +135,10 @@ export default function OrdersScreen() {
       );
     }
 
-    // 3. Completed without rating -> "Leave Review" button
     return (
       <TouchableOpacity
         style={styles.actionBtn}
-        onPress={() => Alert.alert('Review', `Writing review for ${item.title}`)}
+        onPress={() => openReviewModal(item)}
       >
         <Text style={styles.actionBtnText}>Leave Review</Text>
       </TouchableOpacity>
@@ -128,13 +156,17 @@ export default function OrdersScreen() {
           <View
             style={[
               styles.statusBadge,
-              activeTab === 'Ongoing' ? styles.statusBadgeOngoing : styles.statusBadgeCompleted,
+              activeTab === 'Ongoing'
+                ? styles.statusBadgeOngoing
+                : styles.statusBadgeCompleted,
             ]}
           >
             <Text
               style={[
                 styles.statusText,
-                activeTab === 'Ongoing' ? styles.statusTextOngoing : styles.statusTextCompleted,
+                activeTab === 'Ongoing'
+                  ? styles.statusTextOngoing
+                  : styles.statusTextCompleted,
               ]}
             >
               {item.status}
@@ -158,7 +190,9 @@ export default function OrdersScreen() {
         <Package size={64} color="#9ca3af" strokeWidth={1.5} />
       </View>
       <Text style={styles.emptyTitle}>
-        {activeTab === 'Ongoing' ? 'No Ongoing Orders!' : 'No Completed Orders!'}
+        {activeTab === 'Ongoing'
+          ? 'No Ongoing Orders!'
+          : 'No Completed Orders!'}
       </Text>
       <Text style={styles.emptySubtitle}>
         {activeTab === 'Ongoing'
@@ -174,11 +208,14 @@ export default function OrdersScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => router.back()}
+        >
           <ArrowLeft size={22} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Orders</Text>
-       
+     
       </View>
 
       {/* Toggle Tabs */}
@@ -187,7 +224,12 @@ export default function OrdersScreen() {
           style={[styles.tab, activeTab === 'Ongoing' && styles.activeTab]}
           onPress={() => setActiveTab('Ongoing')}
         >
-          <Text style={[styles.tabText, activeTab === 'Ongoing' && styles.activeTabText]}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'Ongoing' && styles.activeTabText,
+            ]}
+          >
             Ongoing
           </Text>
         </TouchableOpacity>
@@ -195,7 +237,12 @@ export default function OrdersScreen() {
           style={[styles.tab, activeTab === 'Completed' && styles.activeTab]}
           onPress={() => setActiveTab('Completed')}
         >
-          <Text style={[styles.tabText, activeTab === 'Completed' && styles.activeTabText]}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'Completed' && styles.activeTabText,
+            ]}
+          >
             Completed
           </Text>
         </TouchableOpacity>
@@ -208,10 +255,85 @@ export default function OrdersScreen() {
         renderItem={renderOrderItem}
         ListEmptyComponent={renderEmptyState}
         contentContainerStyle={
-          filteredOrders.length === 0 ? styles.emptyListContainer : styles.listContainer
+          filteredOrders.length === 0
+            ? styles.emptyListContainer
+            : styles.listContainer
         }
         showsVerticalScrollIndicator={false}
       />
+
+      {/* Review Bottom Sheet Modal */}
+      <Modal
+        visible={isModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={closeReviewModal}
+      >
+        <TouchableWithoutFeedback onPress={closeReviewModal}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.modalContent}
+              >
+                {/* Drag Handle Indicator */}
+                <View style={styles.dragHandle} />
+
+                {/* Modal Header */}
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Leave a Review</Text>
+                  <TouchableOpacity onPress={closeReviewModal}>
+                    <X size={22} color="#111827" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Section Title & Subtitle */}
+                <Text style={styles.modalQuestion}>How was your order?</Text>
+                <Text style={styles.modalSubtitle}>
+                  Please give your rating and also your review.
+                </Text>
+
+                {/* Star Rating Selection */}
+                <View style={styles.starRow}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity
+                      key={star}
+                      onPress={() => setSelectedRating(star)}
+                      activeOpacity={0.7}
+                    >
+                      <Star
+                        size={32}
+                        color="#f59e0b"
+                        fill={star <= selectedRating ? '#f59e0b' : 'transparent'}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Review Text Input */}
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Write your review..."
+                  placeholderTextColor="#9ca3af"
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  value={reviewText}
+                  onChangeText={setReviewText}
+                />
+
+                {/* Submit Button */}
+                <TouchableOpacity
+                  style={styles.submitBtn}
+                  onPress={handleSubmitReview}
+                >
+                  <Text style={styles.submitBtnText}>Submit</Text>
+                </TouchableOpacity>
+              </KeyboardAvoidingView>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -386,5 +508,80 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  /* Modal Styles */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 34,
+  },
+  dragHandle: {
+    width: 48,
+    height: 5,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  modalQuestion: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 16,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#9ca3af',
+    marginTop: 4,
+  },
+  starRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginVertical: 20,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 14,
+    padding: 14,
+    height: 110,
+    fontSize: 14,
+    color: '#111827',
+    marginBottom: 30,
+  },
+  submitBtn: {
+    backgroundColor: '#18181b',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 20,
+  
+  },
+  submitBtnText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
