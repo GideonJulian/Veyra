@@ -1,13 +1,18 @@
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 
 exports.protect = (req, res, next) => {
   let token;
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    token = req.headers.authorization.split(' ')[1];
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    token = req.headers.authorization.split(" ")[1];
   }
 
   if (!token) {
-    return res.status(401).json({ message: 'Not authorized to access this route' });
+    return res
+      .status(401)
+      .json({ message: "Not authorized to access this route" });
   }
 
   try {
@@ -15,15 +20,15 @@ exports.protect = (req, res, next) => {
     req.user = decoded; // Contains id and role
     next();
   } catch (err) {
-    return res.status(401).json({ message: 'Token invalid or expired' });
+    return res.status(401).json({ message: "Token invalid or expired" });
   }
 };
 
 // Admin Guard Middleware
 exports.authorizeAdmin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && req.user.role === "admin") {
     next();
   } else {
-    return res.status(403).json({ message: 'Access denied: Admins only' });
+    return res.status(403).json({ message: "Access denied: Admins only" });
   }
 };

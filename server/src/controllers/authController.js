@@ -1,10 +1,10 @@
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+const User = require("../models/User");
+const jwt = require("jsonwebtoken");
 
 // Helper function to generate JWT Token
 const generateToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-    expiresIn: '30d',
+    expiresIn: "30d",
   });
 };
 
@@ -15,12 +15,14 @@ const generateToken = (id, role) => {
  */
 exports.signup = async (req, res, next) => {
   try {
-    const { fullName, email, password,  } = req.body;
+    const { fullName, email, password } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User with this email already exists' });
+      return res
+        .status(400)
+        .json({ message: "User with this email already exists" });
     }
 
     // Instantiating with new User() ensures pre('save') password hashing fires cleanly
@@ -28,7 +30,7 @@ exports.signup = async (req, res, next) => {
       fullName,
       email,
       password,
-      role: 'customer',
+      role: "customer",
     });
 
     await user.save();
@@ -37,7 +39,7 @@ exports.signup = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Account created successfully',
+      message: "Account created successfully",
       token,
       user: {
         id: user._id,
@@ -61,24 +63,26 @@ exports.login = async (req, res, next) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: 'Please enter valid email and password' });
+      return res
+        .status(400)
+        .json({ message: "Please enter valid email and password" });
     }
 
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select("+password");
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const token = generateToken(user._id, user.role);
 
     res.status(200).json({
       success: true,
-      message: 'Logged in successfully',
+      message: "Logged in successfully",
       token,
       user: {
         id: user._id,
@@ -103,7 +107,7 @@ exports.forgotPassword = async (req, res, next) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: 'No user found with this email' });
+      return res.status(404).json({ message: "No user found with this email" });
     }
 
     const code = Math.floor(1000 + Math.random() * 9000).toString();
@@ -116,7 +120,7 @@ exports.forgotPassword = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'A 4-digit code has been sent to your email',
+      message: "A 4-digit code has been sent to your email",
     });
   } catch (error) {
     next(error);
@@ -139,12 +143,14 @@ exports.verifyCode = async (req, res, next) => {
     });
 
     if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired 4-digit code' });
+      return res
+        .status(400)
+        .json({ message: "Invalid or expired 4-digit code" });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Code verified successfully',
+      message: "Code verified successfully",
     });
   } catch (error) {
     next(error);
@@ -167,7 +173,7 @@ exports.resetPassword = async (req, res, next) => {
     });
 
     if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired session' });
+      return res.status(400).json({ message: "Invalid or expired session" });
     }
 
     user.password = newPassword;
@@ -177,7 +183,7 @@ exports.resetPassword = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Password changed successfully',
+      message: "Password changed successfully",
     });
   } catch (error) {
     next(error);
@@ -193,7 +199,7 @@ exports.getMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     res.status(200).json({
