@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 const {
   signup,
@@ -7,14 +7,14 @@ const {
   verifyCode,
   resetPassword,
   getMe,
-} = require('../controllers/authController');
-const { protect } = require('../middleware/auth');
+} = require("../controllers/authController");
+const { protect } = require("../middleware/auth");
 
-router.post('/signup', signup);
-router.post('/login', login);
-router.post('/forgot-password', forgotPassword);
-router.post('/verify-code', verifyCode);
-router.post('/reset-password', resetPassword);
-router.get('/me', protect, getMe);
+router.post("/signup", signup);
+router.post("/login", login);
+router.post("/forgot-password", forgotPassword);
+router.post("/verify-code", verifyCode);
+router.post("/reset-password", resetPassword);
+router.get("/me", protect, getMe);
 
 module.exports = router;
