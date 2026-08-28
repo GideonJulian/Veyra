@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import {
   View,
   Text,
@@ -10,43 +11,113 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   ActivityIndicator,
+  Alert,
 } from "react-native";
+
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react-native";
+
 import { loginUser } from "../../../services/authService";
 import { GoogleIcon, FacebookIcon } from "../../components/SocialIcons";
+
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Validation
+  // Email validation
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const isEmailTouched = email.length > 0;
+
   const isEmailValid = emailRegex.test(email);
 
   const isFormValid =
     email.trim().length > 0 && password.trim().length > 0 && isEmailValid;
 
+  // Login
+
   const handleLogin = async () => {
-    if (!isFormValid) return;
+    if (!isFormValid || loading) return;
+
+    Keyboard.dismiss();
 
     setLoading(true);
+
     try {
-      await loginUser({ email, password });
-      router.replace("/(tabs)/discover");
-    } catch (error) {
+      const response = await loginUser({
+        email: email.trim(),
+        password,
+      });
+
+      console.log("Login response:", response);
+
+      // Make sure the backend returned data
+
+      if (!response) {
+        throw new Error("Invalid login response");
+      }
+
+      const { token, user } = response;
+
+      if (!token || !user) {
+        throw new Error("Authentication data is missing");
+      }
+
+      // Save authentication information
+
+      await AsyncStorage.setItem("token", token);
+
+      await AsyncStorage.setItem("user", JSON.stringify(user));
+
+      // Save role separately for easy access
+      await AsyncStorage.setItem("userRole", user.role);
+
+      console.log("User role:", user.role);
+
+      // Redirect based on role
+
+      if (user.role === "admin") {
+        router.replace("/admin/(tabs)");
+        return;
+      }
+
+      if (user.role === "customer") {
+        router.replace("/(tabs)/discover");
+        return;
+      }
+
+      // Unknown role
+
+      throw new Error("Invalid user role");
+    } catch (error: any) {
       console.error("Login failed:", error);
+
+      Alert.alert(
+        "Login Failed",
+        error?.message || "Something went wrong. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  // Email border
+
   const getEmailBorderStyle = () => {
-    if (!isEmailTouched) return styles.defaultBorder;
+    if (!isEmailTouched) {
+      return styles.defaultBorder;
+    }
+
     return isEmailValid ? styles.validBorder : styles.invalidBorder;
   };
+
+  // UI
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -57,14 +128,19 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Header */}
+
           <Text style={styles.title}>Login to your account</Text>
+
           <Text style={styles.subtitle}>It’s great to see you again.</Text>
 
           {/* Form */}
+
           <View style={styles.formContainer}>
             {/* Email */}
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Email</Text>
+
               <View style={[styles.inputWrapper, getEmailBorderStyle()]}>
                 <TextInput
                   style={styles.input}
@@ -72,9 +148,11 @@ export default function LoginScreen() {
                   placeholderTextColor="#9CA3AF"
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoCorrect={false}
                   value={email}
                   onChangeText={setEmail}
                 />
+
                 {isEmailTouched && (
                   <View style={styles.iconRight}>
                     {isEmailValid ? (
@@ -88,17 +166,22 @@ export default function LoginScreen() {
             </View>
 
             {/* Password */}
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Password</Text>
+
               <View style={[styles.inputWrapper, styles.defaultBorder]}>
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your password"
                   placeholderTextColor="#9CA3AF"
                   secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
                   value={password}
                   onChangeText={setPassword}
                 />
+
                 <TouchableOpacity
                   style={styles.iconRight}
                   onPress={() => setShowPassword(!showPassword)}
@@ -114,7 +197,11 @@ export default function LoginScreen() {
           </View>
 
           {/* Forgot Password */}
-          <TouchableOpacity style={styles.forgotButton}>
+
+          <TouchableOpacity
+            style={styles.forgotButton}
+            onPress={() => router.push("/")}
+          >
             <Text style={styles.forgotText}>
               Forgot your password?{" "}
               <Text style={styles.forgotLink}>Reset your password</Text>
@@ -122,6 +209,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           {/* Login Button */}
+
           <TouchableOpacity
             style={[
               styles.primaryButton,
@@ -146,19 +234,24 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           {/* Divider */}
+
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
+
             <Text style={styles.dividerText}>Or</Text>
+
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Social Logins */}
+          {/* Social Login */}
+
           <View style={styles.socialContainer}>
             <TouchableOpacity
               style={styles.socialButtonGoogle}
               activeOpacity={0.8}
             >
               <GoogleIcon size={20} />
+
               <Text style={styles.socialGoogleText}>Sign Up with Google</Text>
             </TouchableOpacity>
 
@@ -167,14 +260,18 @@ export default function LoginScreen() {
               activeOpacity={0.8}
             >
               <FacebookIcon size={20} />
+
               <Text style={styles.socialFacebookText}>
                 Sign Up with Facebook
               </Text>
             </TouchableOpacity>
           </View>
-          {/* Footer Link */}
+
+          {/* Footer */}
+
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>Don’t have an account? </Text>
+
             <TouchableOpacity onPress={() => router.push("/sign-up")}>
               <Text style={styles.footerLink}>Join</Text>
             </TouchableOpacity>
@@ -190,34 +287,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
   },
+
   scrollContainer: {
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 32,
   },
+
   title: {
     fontSize: 32,
     fontWeight: "800",
     color: "#111827",
     letterSpacing: -0.8,
   },
+
   subtitle: {
     fontSize: 16,
     color: "#6B7280",
     marginTop: 6,
     marginBottom: 24,
   },
+
   formContainer: {
     gap: 16,
   },
+
   inputGroup: {
     gap: 6,
   },
+
   label: {
     fontSize: 14,
     fontWeight: "600",
     color: "#111827",
   },
+
   inputWrapper: {
     height: 52,
     borderRadius: 12,
@@ -227,35 +331,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: "#FFFFFF",
   },
+
   defaultBorder: {
     borderColor: "#E5E7EB",
   },
+
   validBorder: {
     borderColor: "#16A34A",
   },
+
   invalidBorder: {
     borderColor: "#DC2626",
   },
+
   input: {
     flex: 1,
     height: "100%",
     fontSize: 15,
     color: "#111827",
   },
+
   iconRight: {
     marginLeft: 8,
   },
+
   forgotButton: {
     marginTop: 12,
     marginBottom: 20,
   },
+
   forgotText: {
     fontSize: 13,
+    color: "#111827",
   },
+
   forgotLink: {
     fontWeight: "700",
     textDecorationLine: "underline",
   },
+
   primaryButton: {
     height: 52,
     borderRadius: 12,
@@ -263,75 +377,89 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   disabledButton: {
     backgroundColor: "#E5E7EB",
   },
+
   primaryButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "#FFFFFF",
   },
+
   disabledButtonText: {
     color: "#9CA3AF",
   },
+
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
     marginVertical: 20,
   },
+
   dividerLine: {
     flex: 1,
     height: 1,
     backgroundColor: "#E5E7EB",
   },
+
   dividerText: {
     marginHorizontal: 12,
     fontSize: 14,
     color: "#9CA3AF",
   },
+
   socialContainer: {
     gap: 12,
   },
+
   socialButtonGoogle: {
-  height: 52,
-  borderRadius: 12,
-  borderWidth: 1,
-  borderColor: "#E5E7EB",
-  flexDirection: "row",
-  justifyContent: "center",
-  alignItems: "center",
-  gap: 10,
-  backgroundColor: "#FFFFFF",
-},
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#FFFFFF",
+  },
+
   socialGoogleText: {
     fontSize: 15,
     fontWeight: "600",
     color: "#111827",
   },
+
   socialButtonFacebook: {
-  height: 52,
-  borderRadius: 12,
-  flexDirection: "row",
-  justifyContent: "center",
-  alignItems: "center",
-  gap: 10,
-  backgroundColor: "#1877F2",
-},
+    height: 52,
+    borderRadius: 12,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#1877F2",
+  },
+
   socialFacebookText: {
     fontSize: 15,
     fontWeight: "600",
     color: "#FFFFFF",
   },
+
   footerRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     marginTop: 24,
   },
+
   footerText: {
     fontSize: 14,
     color: "#6B7280",
   },
+
   footerLink: {
     fontSize: 14,
     fontWeight: "700",

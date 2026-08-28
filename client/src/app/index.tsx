@@ -75,23 +75,52 @@ export default function Splash() {
     }
   };
 
-  const init = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 4000));
+ const init = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 4000));
 
-    try {
-      const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
+  try {
+    const hasSeenOnboarding = await AsyncStorage.getItem(
+      "hasSeenOnboarding"
+    );
 
-      if (!hasSeenOnboarding) {
-        router.replace("/onboarding");
-        return;
-      }
-      router.replace("/(tabs)/discover");
-    } catch (err) {
-      console.log(err);
+    // First-time user
+    if (!hasSeenOnboarding) {
       router.replace("/onboarding");
+      return;
     }
-  };
 
+    // Check if user is logged in
+    const token = await AsyncStorage.getItem("token");
+
+    // Not logged in
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    // Get user's role
+    const role = await AsyncStorage.getItem("userRole");
+
+    // Admin
+    if (role === "admin") {
+      router.replace("/admin/(tabs)");
+      return;
+    }
+
+    // Customer
+    if (role === "customer") {
+      router.replace("/(tabs)/discover");
+      return;
+    }
+
+    // Unknown role - send to login
+    router.replace("/login");
+
+  } catch (err) {
+    console.log("Initialization error:", err);
+    router.replace("/login");
+  }
+};
   return (
     <View style={styles.container}>
       {/* Curved background pattern in the top-right corner */}

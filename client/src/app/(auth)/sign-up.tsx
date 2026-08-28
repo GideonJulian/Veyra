@@ -15,12 +15,14 @@ import { router } from "expo-router";
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react-native";
 import { signUpUser } from "../../../services/authService";
 import { GoogleIcon, FacebookIcon } from "../../components/SocialIcons";
+
 export default function SignUpScreen() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Email Validation Logic
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -35,14 +37,25 @@ export default function SignUpScreen() {
     isEmailValid;
 
   const handleSignUp = async () => {
-    if (!isFormValid) return;
+    if (!isFormValid || loading) return;
 
     setLoading(true);
+    setErrorMessage(null);
+
     try {
-      await signUpUser({ fullName, email, password });
-      router.replace("/(tabs)/discover");
-    } catch (error) {
-      console.error("Sign up failed:", error);
+      const response = await signUpUser({
+        fullName: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      if (response) {
+        router.replace("/(tabs)/discover");
+      }
+    } catch (error: any) {
+      const message =
+        error?.message || "Unable to connect to server. Please try again.";
+      setErrorMessage(message);
     } finally {
       setLoading(false);
     }
@@ -66,6 +79,14 @@ export default function SignUpScreen() {
           <Text style={styles.title}>Create an account</Text>
           <Text style={styles.subtitle}>Let’s create your account.</Text>
 
+          {/* Dynamic Error Banner */}
+          {errorMessage && (
+            <View style={styles.errorBanner}>
+              <AlertCircle size={18} color="#DC2626" />
+              <Text style={styles.errorBannerText}>{errorMessage}</Text>
+            </View>
+          )}
+
           {/* Input Fields Form */}
           <View style={styles.formContainer}>
             {/* Full Name */}
@@ -77,7 +98,10 @@ export default function SignUpScreen() {
                   placeholder="Enter your full name"
                   placeholderTextColor="#9CA3AF"
                   value={fullName}
-                  onChangeText={setFullName}
+                  onChangeText={(text) => {
+                    setFullName(text);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
                 />
               </View>
             </View>
@@ -93,7 +117,10 @@ export default function SignUpScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
                 />
                 {isEmailTouched && (
                   <View style={styles.iconRight}>
@@ -117,7 +144,10 @@ export default function SignUpScreen() {
                   placeholderTextColor="#9CA3AF"
                   secureTextEntry={!showPassword}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
                 />
                 <TouchableOpacity
                   style={styles.iconRight}
@@ -145,7 +175,7 @@ export default function SignUpScreen() {
           <TouchableOpacity
             style={[
               styles.primaryButton,
-              !isFormValid && styles.disabledButton,
+              (!isFormValid || loading) && styles.disabledButton,
             ]}
             disabled={!isFormValid || loading}
             onPress={handleSignUp}
@@ -226,7 +256,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#6B7280",
     marginTop: 6,
-    marginBottom: 24,
+    marginBottom: 20,
+  },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEE2E2",
+    borderColor: "#FCA5A5",
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  errorBannerText: {
+    fontSize: 13,
+    color: "#991B1B",
+    fontWeight: "500",
+    flex: 1,
   },
   formContainer: {
     gap: 16,

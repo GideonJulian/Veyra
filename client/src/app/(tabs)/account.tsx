@@ -22,8 +22,26 @@ import {
   LogOut,
   ChevronRight,
 } from 'lucide-react-native';
+import { logoutUser } from '../../../services/authService';
 
 const AccountScreen = () => {
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to log out?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: async () => {
+          await logoutUser();
+          router.replace('/login');
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
@@ -84,7 +102,7 @@ const AccountScreen = () => {
 
           <TouchableOpacity
             style={[styles.menuItem, styles.borderBottom]}
-            onPress={() => router.push('/payment-methods')}
+            onPress={() => router.push('/')}
           >
             <View style={styles.menuIcon}>
               <CreditCard size={22} color="#111827" />
@@ -132,10 +150,7 @@ const AccountScreen = () => {
 
         {/* Section 4: Logout */}
         <View style={styles.logoutSection}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => Alert.alert('Logout', 'Are you sure you want to log out?')}
-          >
+          <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
             <View style={styles.menuIcon}>
               <LogOut size={22} color="#ef4444" />
             </View>
