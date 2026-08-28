@@ -1,9 +1,12 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const connectDB = require('./config/db.js');
-const authRoutes = require('./routes/authRoutes.js'); // 1. Import auth routes
+const authRoutes = require('./routes/authRoutes.js');
+const productRoutes = require('./routes/productRoutes.js');
+const uploadRoutes = require('./routes/uploadRoutes.js');
 
 const app = express();
 
@@ -14,8 +17,13 @@ connectDB();
 app.use(express.json());
 app.use(cors());
 
-// 2. Mount auth routes
+// Serve uploaded image files publicly
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Mount API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Test route
 app.get('/', (req, res) => {

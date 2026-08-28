@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,13 +11,16 @@ import {
   StatusBar,
   TouchableWithoutFeedback,
   Keyboard,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Search, Plus, Edit2, Trash2 } from 'lucide-react-native';
 
 interface Product {
-  id: string;
+  _id: string;
   title: string;
   price: number;
   stock: number;
@@ -27,46 +30,75 @@ interface Product {
 }
 
 const CATEGORIES = ['All', 'Tops', 'Bottoms', 'Shoes', 'Accessories'];
-
-const INITIAL_PRODUCTS: Product[] = [
-  {
-    id: '1',
-    title: 'Slim Fit Linen Shirt',
-    price: 89.0,
-    stock: 45,
-    category: 'Tops',
-    status: 'Active',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCl3fDAieR1lnVaSIelSImby-AQ_l6h8SVclpoRg-I1B0oP9bMMpUixM9h5vJJsGHktVPWeRE-4hDJpU2gTjBM0yaqrUN5nw83FRKolImOglu2vGoY-ZMl8KxlBzi6JHqtAflKe2CQRJ7uccZmLHgRjYhUihCbnm3mT0opj5h4w9uMkfaoNEFqRrU6SCaBV4e36MVczyoPAEqq5uG3ZIeklkmaxbK3J5b6X3a134krplmhgYoCv4grF',
-  },
-  {
-    id: '2',
-    title: 'Straight Leg Denim',
-    price: 120.0,
-    stock: 0,
-    category: 'Bottoms',
-    status: 'Draft',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAKGgWj6bqhKyZ8PLYVveqUx4lKBZ5DP9vFjTgV1pmPrWyyhYfarWHVKmQkHr2wVfd56IU_p1zjhIlNrRuNt1-5KGmXBtU0dB57SncoNVDy_xsSNoDxJEn0cW3rH_CdnJ9yyC6wkHdotmMiVWymMQ8twer6YCZ0q5Tf7iDFBGELiMaWlyCe4q6ThrdHBAfp55ApG5XRhgPeOCMTtdVeMRAVRbpE9z6RTfaCLJmAPczTiDiQgQeYuT6-',
-  },
-  {
-    id: '3',
-    title: 'Classic White Sneakers',
-    price: 145.0,
-    stock: 12,
-    category: 'Shoes',
-    status: 'Active',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuC2Ydw-0ZI_ILfxx4i_muWr8qPKauXoVRh1helHE4OuRkp1AKmjRGNsxOYYBM2zE7-iVxJdQvT1ZinoPNTdHPaQubjlKytsFg7wkszD_32HwrHKMS7Xc-UgYpQtaxOAiMTi50ay13W9e8SYPZ2aVwbcA4FaJdfO0VvMU9U6Q3OI-L79BGsSBr3mSDoAwW-L6rbp3XE2HoXHoPF67-8u3iV5j2x80BDmd7T593lsWpz7zZFLjcDCQq9W',
-  },
-];
+const API_URL = 'http://172.20.10.3:5000/api/products';
 
 const AdminProductsScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Filter products based on search query and category chip selection
+  // Fetch product list from real server API
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch(API_URL);
+      const resData = await response.json();
+
+      if (resData.success) {
+        setProducts(resData.data);
+      } else {
+        Alert.alert('Error', resData.message || 'Failed to fetch products');
+      }
+    } catch (error: any) {
+      Alert.alert('Network Error', error.message || 'Could not connect to backend server');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Re-fetch products every time screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchProducts();
+    }, [])
+  );
+
+  // Handle pull-to-refresh
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchProducts();
+  };
+
+  // Delete product from backend API
+  const handleDeleteProduct = (id: string) => {
+    Alert.alert('Delete Product', 'Are you sure you want to delete this product?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const response = await fetch(`${API_URL}/${id}`, {
+              method: 'DELETE',
+            });
+            const resData = await response.json();
+
+            if (resData.success) {
+              setProducts((prev) => prev.filter((p) => p._id !== id));
+            } else {
+              Alert.alert('Error', resData.message || 'Could not delete product');
+            }
+          } catch (error: any) {
+            Alert.alert('Error', error.message);
+          }
+        },
+      },
+    ]);
+  };
+
+  // Filter products based on client-side search query and selected category
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
       const matchesSearch = product.title
@@ -78,10 +110,6 @@ const AdminProductsScreen = () => {
     });
   }, [searchQuery, selectedCategory, products]);
 
-  const handleDeleteProduct = (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-  };
-
   const renderProductCard = ({ item }: { item: Product }) => (
     <View style={styles.card}>
       <View style={styles.imageContainer}>
@@ -91,13 +119,13 @@ const AdminProductsScreen = () => {
         <View style={styles.actionOverlay}>
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() => router.push(``)}
+            // onPress={() => router.push(`/admin/edit-product?id=${item._id}`)}
           >
             <Edit2 size={16} color="#4b5563" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() => handleDeleteProduct(item.id)}
+            onPress={() => handleDeleteProduct(item._id)}
           >
             <Trash2 size={16} color="#ef4444" />
           </TouchableOpacity>
@@ -108,9 +136,7 @@ const AdminProductsScreen = () => {
           <Text
             style={[
               styles.statusText,
-              item.status === 'Active'
-                ? styles.statusActive
-                : styles.statusDraft,
+              item.status === 'Active' ? styles.statusActive : styles.statusDraft,
             ]}
           >
             {item.status}
@@ -135,84 +161,99 @@ const AdminProductsScreen = () => {
   );
 
   return (
-   <TouchableWithoutFeedback  onPress={Keyboard.dismiss}>
-     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" />
 
-      {/* Header (Menu Icon Removed) */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Products</Text>
+        {/* --- FIXED HEADER & CONTROLS CONTAINER --- */}
+        <View style={styles.fixedHeaderContainer}>
+          {/* Header Bar */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Products</Text>
 
-        <TouchableOpacity
-          style={styles.addProductBtn}
-          onPress={() => router.push('/admin/upload')}
-        >
-          <Plus size={18} color="#ffffff" />
-          <Text style={styles.addProductText}>Add Product</Text>
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity
+              style={styles.addProductBtn}
+              onPress={() => router.push('/admin/upload')}
+            >
+              <Plus size={18} color="#ffffff" />
+              <Text style={styles.addProductText}>Add Product</Text>
+            </TouchableOpacity>
+          </View>
 
-      <View style={styles.container}>
-        {/* Search Input */}
-        <View style={styles.searchContainer}>
-          <Search size={20} color="#9ca3af" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search products..."
-            placeholderTextColor="#9ca3af"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-
-        {/* Horizontal Category Chips */}
-        <View style={styles.categoryContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoryScroll}
-          >
-            {CATEGORIES.map((cat) => {
-              const isActive = selectedCategory === cat;
-              return (
-                <TouchableOpacity
-                  key={cat}
-                  style={[
-                    styles.chip,
-                    isActive ? styles.activeChip : styles.inactiveChip,
-                  ]}
-                  onPress={() => setSelectedCategory(cat)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      isActive ? styles.activeChipText : styles.inactiveChipText,
-                    ]}
-                  >
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Product Cards List */}
-        <FlatList
-          data={filteredProducts}
-          keyExtractor={(item) => item.id}
-          renderItem={renderProductCard}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No products found.</Text>
+          {/* Search Input */}
+          <View style={styles.searchWrapper}>
+            <View style={styles.searchContainer}>
+              <Search size={20} color="#9ca3af" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search products..."
+                placeholderTextColor="#9ca3af"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
             </View>
-          }
-        />
-      </View>
-    </SafeAreaView>
-   </TouchableWithoutFeedback>
+          </View>
+
+          {/* Horizontal Category Chips */}
+          <View style={styles.categoryContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              {CATEGORIES.map((cat) => {
+                const isActive = selectedCategory === cat;
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[
+                      styles.chip,
+                      isActive ? styles.activeChip : styles.inactiveChip,
+                    ]}
+                    onPress={() => setSelectedCategory(cat)}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        isActive ? styles.activeChipText : styles.inactiveChipText,
+                      ]}
+                    >
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+
+        {/* --- SCROLLABLE PRODUCTS AREA --- */}
+        <View style={styles.listWrapper}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#111827" />
+            </View>
+          ) : (
+            <FlatList
+              data={filteredProducts}
+              keyExtractor={(item) => item._id}
+              renderItem={renderProductCard}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#111827']} />
+              }
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No products found.</Text>
+                </View>
+              }
+            />
+          )}
+        </View>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -223,10 +264,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
-  container: {
-    flex: 1,
+  fixedHeaderContainer: {
     backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
+    zIndex: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
   header: {
     height: 60,
@@ -234,8 +276,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
     backgroundColor: '#ffffff',
   },
   headerTitle: {
@@ -257,6 +297,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  searchWrapper: {
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -264,7 +308,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
     borderRadius: 8,
-    marginTop: 16,
     paddingHorizontal: 12,
     height: 48,
   },
@@ -277,10 +320,14 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   categoryContainer: {
-    marginVertical: 14,
+    marginTop: 12,
+    marginBottom: 8,
+    width: '100%',
   },
   categoryScroll: {
+    paddingHorizontal: 16,
     gap: 8,
+    alignItems: 'center',
   },
   chip: {
     paddingHorizontal: 16,
@@ -306,7 +353,13 @@ const styles = StyleSheet.create({
   inactiveChipText: {
     color: '#374151',
   },
+  listWrapper: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
   listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 24,
     gap: 16,
   },
@@ -367,7 +420,7 @@ const styles = StyleSheet.create({
   },
   cardHeaderRow: {
     flexDirection: 'row',
-    justify: 'space-between',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
@@ -385,7 +438,7 @@ const styles = StyleSheet.create({
   },
   cardFooterRow: {
     flexDirection: 'row',
-    justify: 'space-between',
+    justifyContent: 'space-between',
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#f3f4f6',
@@ -401,5 +454,11 @@ const styles = StyleSheet.create({
   emptyText: {
     color: '#9ca3af',
     fontSize: 15,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 40,
   },
 });
