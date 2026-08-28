@@ -9,6 +9,8 @@ import {
   FlatList,
   Image,
   StatusBar,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -133,7 +135,8 @@ const AdminProductsScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+   <TouchableWithoutFeedback  onPress={Keyboard.dismiss}>
+     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
       {/* Header (Menu Icon Removed) */}
@@ -209,6 +212,7 @@ const AdminProductsScreen = () => {
         />
       </View>
     </SafeAreaView>
+   </TouchableWithoutFeedback>
   );
 };
 
