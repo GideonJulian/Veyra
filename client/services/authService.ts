@@ -4,14 +4,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API_URL = "http://172.20.10.3:5000/api/auth";
 const TOKEN_KEY = "user_token";
-
 export interface User {
   _id: string;
   fullName: string;
   email: string;
   role: "customer" | "admin";
+  profileImage?: string; 
+  createdAt?: string;
 }
-
 export interface AuthResponse {
   success: boolean;
   message?: string;

@@ -110,7 +110,7 @@ const AdminProductsScreen = () => {
     });
   }, [searchQuery, selectedCategory, products]);
 
-  const renderProductCard = ({ item }: { item: Product }) => (
+  const renderProductCard = useCallback(({ item }: { item: Product }) => (
     <View style={styles.card}>
       <View style={styles.imageContainer}>
         <Image source={{ uri: item.image }} style={styles.productImage} />
@@ -158,14 +158,14 @@ const AdminProductsScreen = () => {
         </View>
       </View>
     </View>
-  );
+  ), []);
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="dark-content" />
 
-        {/* --- FIXED HEADER & CONTROLS CONTAINER --- */}
+ 
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.fixedHeaderContainer}>
           {/* Header Bar */}
           <View style={styles.header}>
@@ -227,33 +227,35 @@ const AdminProductsScreen = () => {
             </ScrollView>
           </View>
         </View>
+      </TouchableWithoutFeedback>
 
-        {/* --- SCROLLABLE PRODUCTS AREA --- */}
-        <View style={styles.listWrapper}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#111827" />
-            </View>
-          ) : (
-            <FlatList
-              data={filteredProducts}
-              keyExtractor={(item) => item._id}
-              renderItem={renderProductCard}
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}
-              refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#111827']} />
-              }
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>No products found.</Text>
-                </View>
-              }
-            />
-          )}
-        </View>
-      </SafeAreaView>
-    </TouchableWithoutFeedback>
+      {/* --- SCROLLABLE PRODUCTS AREA --- */}
+      <View style={styles.listWrapper}>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#111827" />
+          </View>
+        ) : (
+          <FlatList
+            style={styles.list}
+            data={filteredProducts}
+            keyExtractor={(item) => item._id}
+            renderItem={renderProductCard}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#111827']} />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No products found.</Text>
+              </View>
+            }
+          />
+        )}
+      </View>
+    </SafeAreaView>
   );
 };
 
@@ -320,7 +322,7 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   categoryContainer: {
-    marginTop: 12,
+    marginTop: 0,
     marginBottom: 8,
     width: '100%',
   },
@@ -357,10 +359,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
+  list: {
+    flex: 1,
+  },
   listContent: {
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingTop: 10,
+    paddingBottom: 50,
     gap: 16,
   },
   card: {
