@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,19 +9,27 @@ import {
   StatusBar,
   Alert,
   ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Edit2,
   Store,
   Copy,
   LogOut,
   User as UserIcon,
-} from 'lucide-react-native';
-import { reloginWithToken, clearAuthToken, User } from '../../../../services/authService';
+} from "lucide-react-native";
+import {
+  reloginWithToken,
+  clearAuthToken,
+  User,
+  logoutUser,
+} from "../../../../services/authService";
+import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Default dynamic avatar placeholder using UI Avatars or a default image URL
-const DEFAULT_AVATAR = 'https://via.placeholder.com/150/111827/FFFFFF?text=User';
+const DEFAULT_AVATAR =
+  "https://via.placeholder.com/150/111827/FFFFFF?text=User";
 
 const AdminProfileScreen = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -39,28 +47,36 @@ const AdminProfileScreen = () => {
         setUser(res.user);
       }
     } catch (error: any) {
-      console.warn('Failed to load user profile:', error.message);
+      console.warn("Failed to load user profile:", error.message);
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert("Logout", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: 'Logout',
-        style: 'destructive',
+        text: "Logout",
+        style: "destructive",
         onPress: async () => {
-          await clearAuthToken();
-    
+          try {
+            await logoutUser();
+
+            await AsyncStorage.multiRemove(["user", "userRole"]);
+
+            router.replace("/login");
+          } catch (error) {
+            console.error("Error during logout:", error);
+            router.replace("/login");
+          }
         },
       },
     ]);
   };
 
   const copyToClipboard = (text: string) => {
-    Alert.alert('Copied', `${text} copied to clipboard!`);
+    Alert.alert("Copied", `${text} copied to clipboard!`);
   };
 
   // Helper function to resolve image URL or placeholder
@@ -72,7 +88,7 @@ const AdminProfileScreen = () => {
     if (user?.fullName) {
       return {
         uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-          user.fullName
+          user.fullName,
         )}&background=111827&color=ffffff&size=128`,
       };
     }
@@ -88,7 +104,7 @@ const AdminProfileScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
       {/* Top Header */}
@@ -120,16 +136,16 @@ const AdminProfileScreen = () => {
             <View style={styles.profileMeta}>
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>
-                  {user?.role ? user.role.toUpperCase() : 'USER'}
+                  {user?.role ? user.role.toUpperCase() : "USER"}
                 </Text>
               </View>
               {/* Display User Name */}
               <Text style={styles.userName}>
-                {user?.fullName || 'Guest User'}
+                {user?.fullName || "Guest User"}
               </Text>
               {/* Display User Email */}
               <Text style={styles.userEmail}>
-                {user?.email || 'no-email@domain.com'}
+                {user?.email || "no-email@domain.com"}
               </Text>
             </View>
           </View>
@@ -140,17 +156,17 @@ const AdminProfileScreen = () => {
               <Text style={styles.gridLabel}>Joined</Text>
               <Text style={styles.gridValue}>
                 {user?.createdAt
-                  ? new Date(user.createdAt).toLocaleDateString('en-US', {
-                      month: 'short',
-                      year: 'numeric',
+                  ? new Date(user.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      year: "numeric",
                     })
-                  : 'N/A'}
+                  : "N/A"}
               </Text>
             </View>
             <View style={styles.gridCol}>
               <Text style={styles.gridLabel}>User ID</Text>
               <Text style={styles.gridValue} numberOfLines={1}>
-                {user?._id ? `...${user._id.slice(-6)}` : 'N/A'}
+                {user?._id ? `...${user._id.slice(-6)}` : "N/A"}
               </Text>
             </View>
           </View>
@@ -179,7 +195,7 @@ const AdminProfileScreen = () => {
               <Text style={[styles.fieldValue, styles.linkText]}>
                 lumina.shop
               </Text>
-              <TouchableOpacity onPress={() => copyToClipboard('lumina.shop')}>
+              <TouchableOpacity onPress={() => copyToClipboard("lumina.shop")}>
                 <Copy size={16} color="#9ca3af" />
               </TouchableOpacity>
             </View>
@@ -189,7 +205,7 @@ const AdminProfileScreen = () => {
             <Text style={styles.fieldLabel}>Contact Email</Text>
             <View style={styles.fieldRow}>
               <Text style={styles.fieldValue}>
-                {user?.email || 'hello@lumina.shop'}
+                {user?.email || "hello@lumina.shop"}
               </Text>
               <TouchableOpacity>
                 <Edit2 size={16} color="#9ca3af" />
@@ -213,43 +229,43 @@ export default AdminProfileScreen;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     height: 60,
     paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-    backgroundColor: '#ffffff',
+    borderBottomColor: "#f3f4f6",
+    backgroundColor: "#ffffff",
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
   },
   avatarMiniBorder: {
     width: 34,
     height: 34,
     borderRadius: 17,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    overflow: 'hidden',
+    borderColor: "#e5e7eb",
+    overflow: "hidden",
   },
   avatarMini: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   scrollContent: {
     padding: 16,
@@ -257,22 +273,22 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
     padding: 16,
-    position: 'relative',
+    position: "relative",
   },
   cardEditBtn: {
-    position: 'absolute',
+    position: "absolute",
     top: 12,
     right: 12,
     padding: 6,
     zIndex: 1,
   },
   profileHeader: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 12,
   },
   avatarLargeBorder: {
@@ -280,18 +296,18 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 48,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
-    overflow: 'hidden',
+    borderColor: "#e5e7eb",
+    overflow: "hidden",
   },
   avatarLarge: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   profileMeta: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   badge: {
-    backgroundColor: 'rgba(17, 24, 39, 0.08)',
+    backgroundColor: "rgba(17, 24, 39, 0.08)",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -299,96 +315,96 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
   },
   userName: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: "700",
+    color: "#111827",
     marginBottom: 2,
   },
   userEmail: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   profileGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
+    borderTopColor: "#f3f4f6",
   },
   gridCol: {
     flex: 1,
   },
   gridLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#6b7280',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    color: "#6b7280",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   gridValue: {
     fontSize: 13,
-    color: '#111827',
+    color: "#111827",
     marginTop: 4,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: "#f3f4f6",
     marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
   },
   fieldGroup: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f9fafb',
+    borderBottomColor: "#f9fafb",
   },
   fieldLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: "#6b7280",
     marginBottom: 4,
   },
   fieldRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   fieldValue: {
     fontSize: 15,
-    fontWeight: '500',
-    color: '#111827',
+    fontWeight: "500",
+    color: "#111827",
   },
   linkText: {
-    color: '#2563eb',
+    color: "#2563eb",
   },
   logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     paddingVertical: 14,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#fca5a5',
-    backgroundColor: '#fef2f2',
+    borderColor: "#fca5a5",
+    backgroundColor: "#fef2f2",
     marginTop: 8,
   },
   logoutBtnText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#ef4444',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    color: "#ef4444",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
 });
