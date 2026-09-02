@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react-native";
 import { signUpUser } from "../../../services/authService";
 import { GoogleIcon, FacebookIcon } from "../../components/SocialIcons";
@@ -39,19 +40,40 @@ export default function SignUpScreen() {
   const handleSignUp = async () => {
     if (!isFormValid || loading) return;
 
+    Keyboard.dismiss();
     setLoading(true);
     setErrorMessage(null);
 
     try {
+      // signUpUser automatically saves 'user_token' in AsyncStorage
       const response = await signUpUser({
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         password,
       });
 
-      if (response) {
-        router.replace("/(tabs)/discover");
+      if (!response || !response.user) {
+        throw new Error("Sign up completed, but user details are missing.");
       }
+
+      const { user } = response;
+
+      // Save local UI metadata
+      await AsyncStorage.setItem("user", JSON.stringify(user));
+      await AsyncStorage.setItem("userRole", user.role);
+
+      // Route based on role
+      if (user.role === "admin") {
+        router.replace("/admin/(tabs)");
+        return;
+      }
+
+      if (user.role === "customer") {
+        router.replace("/(tabs)/discover");
+        return;
+      }
+
+      router.replace("/(tabs)/discover");
     } catch (error: any) {
       const message =
         error?.message || "Unable to connect to server. Please try again.";

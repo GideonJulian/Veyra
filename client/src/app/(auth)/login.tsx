@@ -43,69 +43,55 @@ export default function LoginScreen() {
   // Login
 
   const handleLogin = async () => {
-    if (!isFormValid || loading) return;
+  if (!isFormValid || loading) return;
 
-    Keyboard.dismiss();
+  Keyboard.dismiss();
+  setLoading(true);
 
-    setLoading(true);
+  try {
+    // loginUser automatically calls saveAuthToken(result.token) internally
+    const response = await loginUser({
+      email: email.trim(),
+      password,
+    });
 
-    try {
-      const response = await loginUser({
-        email: email.trim(),
-        password,
-      });
+    console.log("Login response:", response);
 
-      console.log("Login response:", response);
-
-      // Make sure the backend returned data
-
-      if (!response) {
-        throw new Error("Invalid login response");
-      }
-
-      const { token, user } = response;
-
-      if (!token || !user) {
-        throw new Error("Authentication data is missing");
-      }
-
-      // Save authentication information
-
-      await AsyncStorage.setItem("token", token);
-
-      await AsyncStorage.setItem("user", JSON.stringify(user));
-
-      // Save role separately for easy access
-      await AsyncStorage.setItem("userRole", user.role);
-
-      console.log("User role:", user.role);
-
-      // Redirect based on role
-
-      if (user.role === "admin") {
-        router.replace("/admin/(tabs)");
-        return;
-      }
-
-      if (user.role === "customer") {
-        router.replace("/(tabs)/discover");
-        return;
-      }
-
-      // Unknown role
-
-      throw new Error("Invalid user role");
-    } catch (error: any) {
-      console.error("Login failed:", error);
-
-      Alert.alert(
-        "Login Failed",
-        error?.message || "Something went wrong. Please try again.",
-      );
-    } finally {
-      setLoading(false);
+    if (!response || !response.token || !response.user) {
+      throw new Error("Authentication data is missing");
     }
-  };
+
+    const { user } = response;
+
+    // Save user metadata locally
+    await AsyncStorage.setItem("user", JSON.stringify(user));
+    await AsyncStorage.setItem("userRole", user.role);
+
+    console.log("User role:", user.role);
+
+    // Redirect based on role
+    if (user.role === "admin") {
+      router.replace("/admin/(tabs)");
+      return;
+    }
+
+    if (user.role === "customer") {
+      router.replace("/(tabs)/discover");
+      return;
+    }
+
+    throw new Error("Invalid user role");
+  } catch (error: any) {
+    console.error("Login failed:", error);
+
+    Alert.alert(
+      "Login Failed",
+      error?.message || "Something went wrong. Please try again."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Email border
 

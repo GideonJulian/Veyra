@@ -97,6 +97,23 @@ exports.login = async (req, res, next) => {
 };
 
 /**
+ * @desc    Logout user / Clear active session
+ * @route   POST /api/auth/logout
+ * @access  Private
+ */
+exports.logout = async (req, res, next) => {
+  try {
+    // Standard stateless JWT response: acknowledge successful logout on the backend
+    res.status(200).json({
+      success: true,
+      message: "Successfully logged out",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @desc    Forgot Password - Send 4 Digit Code
  * @route   POST /api/auth/forgot-password
  * @access  Public
