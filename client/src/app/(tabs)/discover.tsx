@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,8 +10,9 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Modal,
-  Image,
   Dimensions,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import {
   Bell,
@@ -19,13 +20,15 @@ import {
   Mic,
   SlidersHorizontal,
   X,
-  Heart,
   ChevronDown,
+  AlertCircle,
 } from "lucide-react-native";
 import ProductCard from "../../components/ProductCard";
-
 import { router } from "expo-router";
+
 const { width } = Dimensions.get("window");
+
+const API_URL = "http://172.20.10.3:5000/api/products";
 
 const CATEGORIES = [
   "All",
@@ -38,21 +41,25 @@ const CATEGORIES = [
 const SORT_OPTIONS = ["Relevance", "Price: Low - High", "Price: High - Low"];
 const SIZES = ["S", "M", "L", "XL", "XXL"];
 
-const PRODUCTS = [
-  {
-    id: "1",
-    title: "Regular Fit Slogan",
-    image: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=300",
-  },
-  {
-    id: "2",
-    title: "Regular Fit Polo",
-    image: "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=300",
-  },
-];
+interface Product {
+  _id?: string;
+  id?: string;
+  title?: string;
+  name?: string;
+  image?: string;
+  images?: string[];
+  price?: number;
+  category?: string;
+  [key: string]: any;
+}
 
-const Discover = ({ navigation }: any) => {
-  const [selectedCategory, setSelectedCategory] = useState("Tshirts");
+const Discover = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterVisible, setIsFilterVisible] = useState(false);
 
@@ -60,6 +67,54 @@ const Discover = ({ navigation }: any) => {
   const [selectedSort, setSelectedSort] = useState("Relevance");
   const [selectedSize, setSelectedSize] = useState("L");
   const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
+
+  // Fetch products from backend API
+  const fetchProducts = useCallback(async () => {
+    try {
+      setErrorMessage(null);
+      const response = await fetch(API_URL);
+
+      if (!response.ok) {
+        throw new Error(`Server returned status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Normalize array response (handles root array or nested { products: [] })
+      const productList = Array.isArray(data) ? data : data.products || [];
+      setProducts(productList);
+    } catch (error: any) {
+      console.error("Error fetching products:", error);
+      setErrorMessage(
+        error?.message || "Unable to load products. Please try again."
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchProducts();
+  }, [fetchProducts]);
+
+  // Client-side Filter Logic for Category and Search Input
+  const filteredProducts = products.filter((product) => {
+    const title = (product.title || product.name || "").toLowerCase();
+    const category = (product.category || "").toLowerCase();
+
+    const matchesSearch = title.includes(searchQuery.toLowerCase().trim());
+    const matchesCategory =
+      selectedCategory === "All" ||
+      category.includes(selectedCategory.toLowerCase());
+
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -130,17 +185,46 @@ const Discover = ({ navigation }: any) => {
           </ScrollView>
         </View>
 
-        {/* Products Grid */}
-        <ScrollView contentContainerStyle={styles.productsGrid}>
-          {PRODUCTS.map((product) => (
-            <View key={product.id} style={styles.productCard}>
-              <ProductCard
-                product={product}
-                onPress={() => router.push(`/product/[id]`)}
-              />
-            </View>
-          ))}
-        </ScrollView>
+        {/* Products Grid / State Handlers */}
+        {loading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#18181B" />
+            <Text style={styles.loadingText}>Loading products...</Text>
+          </View>
+        ) : errorMessage ? (
+          <View style={styles.centerContainer}>
+            <AlertCircle size={40} color="#DC2626" />
+            <Text style={styles.errorText}>{errorMessage}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchProducts}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.productsGrid}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          >
+            {filteredProducts.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No products found.</Text>
+              </View>
+            ) : (
+              filteredProducts.map((product) => {
+                const productId = product._id || product.id;
+                return (
+                  <View key={productId} style={styles.productCard}>
+                    <ProductCard
+                      product={product}
+                      onPress={() => router.push(`/product/${productId}`)}
+                    />
+                  </View>
+                );
+              })
+            )}
+          </ScrollView>
+        )}
 
         {/* Filter Modal Sheet */}
         <Modal
@@ -157,10 +241,8 @@ const Discover = ({ navigation }: any) => {
             />
 
             <View style={styles.modalContent}>
-              {/* Sheet Drag Indicator */}
               <View style={styles.dragHandle} />
 
-              {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Filters</Text>
                 <TouchableOpacity
@@ -212,7 +294,7 @@ const Discover = ({ navigation }: any) => {
                 {/* Price Range Section */}
                 <View style={styles.priceHeaderRow}>
                   <Text style={styles.sectionTitle}>Price</Text>
-                  <Text style={styles.priceRangeValue}>$0 - $19</Text>
+                  <Text style={styles.priceRangeValue}>$0 - $100</Text>
                 </View>
                 <View style={styles.sliderTrackContainer}>
                   <View style={styles.sliderLine} />
@@ -235,7 +317,6 @@ const Discover = ({ navigation }: any) => {
                   </TouchableOpacity>
                 </View>
 
-                {/* Size Selection List */}
                 {isSizeDropdownOpen && (
                   <View style={styles.sizeOptionsList}>
                     {SIZES.map((size) => (
@@ -264,7 +345,6 @@ const Discover = ({ navigation }: any) => {
                   </View>
                 )}
 
-                {/* Apply Filters Button */}
                 <TouchableOpacity
                   style={styles.applyButton}
                   activeOpacity={0.8}
@@ -381,39 +461,46 @@ const styles = StyleSheet.create({
   productCard: {
     width: (width - 56) / 2,
   },
-  imageContainer: {
-    position: "relative",
-    width: "100%",
-    height: 200,
-    borderRadius: 16,
-    overflow: "hidden",
-    backgroundColor: "#F3F4F6",
-  },
-  productImage: {
-    width: "100%",
-    height: "100%",
-  },
-  favoriteButton: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#FFFFFF",
+  centerContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: 24,
   },
-  productTitle: {
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#6B7280",
+    fontWeight: "500",
+  },
+  errorText: {
+    marginTop: 12,
     fontSize: 15,
-    fontWeight: "700",
-    color: "#111827",
-    marginTop: 10,
+    color: "#DC2626",
+    textAlign: "center",
+    fontWeight: "500",
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: "#18181B",
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  emptyContainer: {
+    flex: 1,
+    width: "100%",
+    paddingVertical: 40,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 15,
+    color: "#6B7280",
   },
   modalOverlay: {
     flex: 1,

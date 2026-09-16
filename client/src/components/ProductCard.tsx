@@ -1,20 +1,33 @@
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image } from 'react-native'
 import React from 'react'
-import { Heart,   } from 'lucide-react-native';
+import { Heart } from 'lucide-react-native';
+
 const { width } = Dimensions.get("window");
 
-interface Product {
-  id: string;
-  title: string;
-  image: string;
+// 1. Export the interface so screen files can import it
+// 2. Add support for backend properties (_id, optional image/title)
+export interface Product {
+  id?: string;
+  _id?: string;
+  title?: string;
+  name?: string;
+  image?: string;
+  price?: number;
+  category?: string;
+  [key: string]: any;
 }
 
-interface ProductCardProps {
+export interface ProductCardProps {
   product: Product;
   onFavoritePress?: (id: string) => void;
   onPress?: () => void;
 }
+
 const ProductCard: React.FC<ProductCardProps> = ({ product, onFavoritePress, onPress }) => {
+  const productId = product.id || product._id || "";
+  const displayTitle = product.title || product.name || "Untitled Product";
+  const displayImage = product.image || "https://via.placeholder.com/300";
+
   return (
     <TouchableOpacity 
       style={styles.productCard} 
@@ -22,26 +35,27 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onFavoritePress, onP
       onPress={onPress}
     >
       <View style={styles.imageContainer}>
-        <Image source={{ uri: product.image }} style={styles.productImage} />
+        <Image source={{ uri: displayImage }} style={styles.productImage} />
         <TouchableOpacity
           style={styles.favoriteButton}
           activeOpacity={0.8}
           onPress={(e) => {
-            e.stopPropagation(); // Prevents triggering card navigation when favoriting
-            onFavoritePress && onFavoritePress(product.id);
+            e.stopPropagation();
+            onFavoritePress && onFavoritePress(productId);
           }}
         >
           <Heart size={18} color="#111827" />
         </TouchableOpacity>
       </View>
       <Text style={styles.productTitle} numberOfLines={1}>
-        {product.title}
+        {displayTitle}
       </Text>
     </TouchableOpacity>
   );
 };
+
 const styles = StyleSheet.create({ 
-    productsGrid: {
+  productsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     paddingHorizontal: 20,
@@ -86,6 +100,6 @@ const styles = StyleSheet.create({
     color: "#111827",
     marginTop: 10,
   },
-})
+});
 
-export default ProductCard
+export default ProductCard;
