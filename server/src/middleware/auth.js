@@ -25,7 +25,7 @@ exports.protect = (req, res, next) => {
 };
 
 // Admin Guard Middleware
-exports.authorizeAdmin = (req, res, next) => {
+exports.admin = (req, res, next) => {
   if (req.user && req.user.role === "admin") {
     next();
   } else {
